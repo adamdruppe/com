@@ -1,0 +1,8 @@
+i guess all com methods are supposed to return hresult
+
+then their return value is an out parameter on the interface
+
+
+to create an object from a progid:
+
+http://msdn.microsoft.com/en-us/library/windows/desktop/ms688386%28v=vs.85%29.aspx

@@ -1,0 +1,1 @@
+dmd -ofdserver.DLL ihello.d ../comhelpers.d chello.d dserver.def  -d win32\winerror.d win32\unknwn.d win32\oaidl.d
