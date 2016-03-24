@@ -1,5 +1,4 @@
-import win32.basetyps;
-import win32.unknwn;
+import core.sys.windows.windows;
 
 import comhelpers;
 

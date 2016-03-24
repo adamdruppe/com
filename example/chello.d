@@ -2,13 +2,17 @@ import ihello;
 
 // dmdw -ofdserver.DLL ihello.d comhelpers.d chello.d dserver.def  -I/home/me/program/lib/ -d /home/me/program/lib/win32/{winerror,unknwn,oaidl}.d
 
-import win32.winuser;
+import core.sys.windows.windows;
+import core.sys.windows.com;
+import core.sys.windows.oaidl;
 
 import comhelpers;
 
+pragma(lib, "user32");
+
 @ComGuid(CLSID_Hello)
 class CHello : IHello, IDispatch {
-	mixin ComObject!();
+	mixin ComObjectImpl!();
 	mixin IDispatchImpl!();
 
 	extern(Windows)
