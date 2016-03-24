@@ -2,8 +2,8 @@ LIBRARY         dserver
 EXETYPE         NT
 SUBSYSTEM       WINDOWS
 EXPORTS
-	DllGetClassObject   = _DllGetClassObject@12
-	DllCanUnloadNow     = _DllCanUnloadNow@0
-	DllRegisterServer   = _DllRegisterServer@0
-	DllUnregisterServer = _DllUnregisterServer@0
+	DllGetClassObject
+	DllCanUnloadNow
+	DllRegisterServer
+	DllUnregisterServer
 

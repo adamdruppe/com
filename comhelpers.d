@@ -1,13 +1,6 @@
-public import win32.windef;
-public import win32.basetyps;
-public import win32.unknwn;
-public import win32.oaidl;
-public import win32.uuid;
-public import win32.winuser;
-public import win32.winreg;
-public import win32.objbase;
-public import win32.winbase;
-public import win32.wtypes;
+import core.sys.windows.windows;
+import core.sys.windows.com;
+import core.sys.windows.oaidl;
 
 public import core.stdc.string;
 import core.atomic;
@@ -123,7 +116,6 @@ AutoComPtr!T createObject(T, string iidStr = null)(GUID classId) {
 T getFromVariant(T)(VARIANT arg) {
 	import std.traits;
 	import std.conv;
-	import win32.oleauto;
 	static if(is(T == int)) {
 		if(arg.vt == 3)
 			return arg.intVal;
@@ -221,7 +213,6 @@ mixin template IDispatchImpl() {
 					// FIXME: fill in the exception info
 					if(except !is null) {
 						except.wCode = 1;
-						import win32.oleauto;
 						import std.utf;
 						except.bstrDescription = SysAllocString(toUTFz!(wchar*)(e.toString()));
 						except.bstrSource = SysAllocString("amazing"w.ptr);
@@ -236,7 +227,7 @@ mixin template IDispatchImpl() {
 }
 pragma(lib, "oleaut32");
 
-mixin template ComObject() {
+mixin template ComObjectImpl() {
 protected:
 	IUnknown m_pUnkOuter;       // Controlling unknown
 	PFNDESTROYED m_pfnDestroy;          // To call on closure
@@ -400,7 +391,7 @@ class ClassFactory(Class) : IClassFactory {
 		hr      = E_OUTOFMEMORY;
 
 		// Verify that a controlling unknown asks for IUnknown
-		if (null !is pUnkOuter && memcmp(&IID_IUnknown, riid, IID.sizeof))
+		if (null !is pUnkOuter && IID_IUnknown == *riid)
 			return CLASS_E_NOAGGREGATION;
 
 		// Create the object passing function to notify on destruction.
@@ -481,12 +472,12 @@ char[] oleCharsToString(char[] buffer, OLECHAR* chars) {
 mixin template ComServerMain(Class, string progId, string ver) {
 	static assert(hasGuidAttribute!Class, "Add a @ComGuid(GUID()) to your class");
 
-	__gshared win32.windef.HINSTANCE g_hInst;
+	__gshared HINSTANCE g_hInst;
 
 	// initializing the runtime can fail on Windows XP when called via regsvr32...
 
 	extern (Windows)
-	BOOL DllMain(win32.windef.HINSTANCE hInstance, ULONG ulReason, LPVOID pvReserved) {
+	BOOL DllMain(HINSTANCE hInstance, ULONG ulReason, LPVOID pvReserved) {
 		import core.sys.windows.dll;
 		g_hInst = hInstance;
 
@@ -750,7 +741,7 @@ BOOL SetKeyAndValue(LPCSTR pszKey, LPCSTR pszSubkey, LPCSTR pszValue)
 	if (null != pszValue)
 	{
 	    if (RegSetValueExA(hKey, null, 0, REG_SZ, cast(BYTE *) pszValue,
-			       (strlen(pszValue) + 1) * char.sizeof) != ERROR_SUCCESS)
+                           cast(uint)((strlen(pszValue) + 1) * char.sizeof)) != ERROR_SUCCESS)
 		result = false;
 	}
 
@@ -797,7 +788,7 @@ int dll_regserver(const (char) *dllname, int flag) {
 		hMod=LoadLibraryA(dllname);
 
 		if (hMod > cast(HINSTANCE) HINSTANCE_ERROR) {
-			pfn = GetProcAddress(hMod, fn);
+			pfn = cast(pfn_t)(GetProcAddress(hMod, fn));
 
 			if (pfn && SUCCEEDED((*pfn)()))
 				result = 0;
