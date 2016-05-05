@@ -16,23 +16,44 @@ static immutable struct ComGuid {
 	GUID guid;
 }
 
-bool hasGuidAttribute(T)() {
-	foreach(attr; __traits(getAttributes, T))
-		static if(is(typeof(attr) == ComGuid))
-			return true;
-	return false;
+template Guid(string s)
+{ /* https://msdn.microsoft.com/en-us/library/96ff78dc(v=vs.110).aspx */
+    static if (s.length == 38 && (s[0] == '{' && s[$ - 1] == '}') || (s[0] == '(' && s[$ - 1] == ')'))
+    {
+        enum Guid = Guid!(s[1 .. $ - 1]);
+    }
+    else static if (s.length == 36)
+    {
+        enum Guid = mixin("GUID(0x" ~ s[0 .. 8] ~ ",0x" ~ s[9 .. 13] ~ ",0x"
+                    ~ s[14 .. 18] ~ ",[0x" ~ s[19 .. 21] ~ ",0x" ~ s[21 .. 23]
+                    ~ ",0x" ~ s[24 .. 26] ~ ",0x" ~ s[26 .. 28] ~ ",0x"
+                    ~ s[28 .. 30] ~ ",0x" ~ s[30 .. 32] ~ ",0x" ~ s[32 .. 34]
+                    ~ ",0x" ~ s[34 .. 36] ~ "])");
+    }
+    else
+        static assert(false, "Guid is not in the correct format");
 }
 
-template getGuidAttribute(T) {
-	static ComGuid helper() {
-		foreach(attr; __traits(getAttributes, T))
-			static if(is(typeof(attr) == ComGuid))
-				return attr;
-		assert(0);
-	}
-	__gshared static immutable getGuidAttribute = helper();
+bool hasGuidAttribute(T)()
+{
+    foreach (attr; __traits(getAttributes, T))
+        static if (is(typeof(attr) == ComGuid))
+            return true;
+    return false;
 }
 
+template getGuidAttribute(T)
+{
+    static ComGuid helper()
+    {
+        foreach (attr; __traits(getAttributes, T))
+            static if (is(typeof(attr) == ComGuid))
+                return attr;
+        assert(0);
+    }
+
+    __gshared static immutable getGuidAttribute = helper();
+}
 
 /* COM CLIENT CODE */
 
