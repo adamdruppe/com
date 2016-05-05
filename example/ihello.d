@@ -2,7 +2,7 @@ import core.sys.windows.windows;
 
 import comhelpers;
 
-@ComGuid(GUID(0x00421140, 0, 0, [0xC0, 0, 0, 0, 0, 0, 0, 0x46]))
+@Com(GUID(0x00421140, 0, 0, [0xC0, 0, 0, 0, 0, 0, 0, 0x46]))
 interface IHello : IUnknown {
     extern (Windows) :
     int Print();

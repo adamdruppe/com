@@ -9,11 +9,11 @@ pragma(lib, "advapi32");
 pragma(lib, "ole32");
 pragma(lib, "uuid");
 
-
 /* Attributes that help with automation */
 
-static immutable struct ComGuid {
-	GUID guid;
+static immutable struct Com
+{
+    GUID guid;
 }
 
 template Guid(string s)
@@ -37,18 +37,18 @@ template Guid(string s)
 bool hasGuidAttribute(T)()
 {
     foreach (attr; __traits(getAttributes, T))
-        static if (is(typeof(attr) == ComGuid))
+        static if (is(typeof(attr) == Com))
             return true;
     return false;
 }
 
 template getGuidAttribute(T)
 {
-    static ComGuid helper()
+    static GUID helper()
     {
         foreach (attr; __traits(getAttributes, T))
-            static if (is(typeof(attr) == ComGuid))
-                return attr;
+            static if (is(typeof(attr) == Com))
+                return attr.guid;
         assert(0);
     }
 
@@ -491,7 +491,8 @@ char[] oleCharsToString(char[] buffer, OLECHAR* chars) {
 
 // usage: mixin ComServerMain!(CHello, CLSID_Hello, "Hello", "1.0");
 mixin template ComServerMain(Class, string progId, string ver) {
-	static assert(hasGuidAttribute!Class, "Add a @ComGuid(GUID()) to your class");
+	static assert(hasGuidAttribute!Class,
+            "Add a @Com(Guid!\"dddddddd-dddd-dddd-dddd-dddddddddddd\") to your class");
 
 	__gshared HINSTANCE g_hInst;
 
