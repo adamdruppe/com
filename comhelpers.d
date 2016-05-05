@@ -96,6 +96,40 @@ struct AutoComPtr(T) {
 	~this() {
 		t.Release();
 	}
+template opDispatch(string member)
+{
+    auto opDispatch(A...)(A args)
+    {
+        IDispatch disp;
+        auto iid_dispatch = IID_IDispatch;
+        auto hr = t.QueryInterface(&iid_dispatch, cast(void**)&disp);
+        if (FAILED(hr))
+            throw new Exception("Failed to get dispatch");
+
+        int dispId;
+        auto iid_null = GUID_NULL;
+        import std.utf : toUTF16z;
+
+        auto szMember = member.toUTF16z;
+        hr = disp.GetIDsOfNames(&iid_null, cast(wchar**)&szMember, 1,
+                LOCALE_USER_DEFAULT, &dispId);
+        if (FAILED(hr))
+            throw new Exception("Failed to get method id");
+
+        wchar* str = cast(wchar*) "<xml></xml>".toUTF16z; // TODO build arguments
+        DISPPARAMS params;
+        VARIANTARG arg1;
+        arg1.vt = VARENUM.VT_BSTR;
+        arg1.bstrVal = str;
+        params.rgvarg = &arg1;
+        params.cArgs = 1;
+        hr = disp.Invoke(dispId, &iid_null, LOCALE_SYSTEM_DEFAULT,
+                DISPATCH_METHOD, &params, null, null, null);
+        if (FAILED(hr))
+            throw new Exception("Failed to invoke method");
+        //... TODO
+    }
+}
 	alias t this;
 }
 
@@ -836,4 +870,17 @@ struct TmpStr {
 		buffer[length .. length + s.length] = s[];
 		length += s.length;
 	}
+}
+
+@Com(Guid!"2933BF95-7B36-11D2-B20E-00C04F983E60")
+interface DOMDocument : IUnknown
+{
+}
+
+void main()
+{
+    enum CLSID_DOMDocument60Class = Guid!"88D96A05-F192-11D4-A65F-0040963251E5";
+    auto a = createObject!DOMDocument(CLSID_DOMDocument60Class);
+
+    a.LoadXML("<xml></xml>");
 }
