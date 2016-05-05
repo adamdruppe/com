@@ -10,7 +10,7 @@ import comhelpers;
 
 pragma(lib, "user32");
 
-@ComGuid(CLSID_Hello)
+@Com(CLSID_Hello)
 class CHello : IHello, IDispatch {
 	mixin ComObjectImpl!();
 	mixin IDispatchImpl!();

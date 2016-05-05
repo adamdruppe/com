@@ -9,30 +9,51 @@ pragma(lib, "advapi32");
 pragma(lib, "ole32");
 pragma(lib, "uuid");
 
-
 /* Attributes that help with automation */
 
-static immutable struct ComGuid {
-	GUID guid;
+static immutable struct Com
+{
+    GUID guid;
 }
 
-bool hasGuidAttribute(T)() {
-	foreach(attr; __traits(getAttributes, T))
-		static if(is(typeof(attr) == ComGuid))
-			return true;
-	return false;
+template Guid(string s)
+{ /* https://msdn.microsoft.com/en-us/library/96ff78dc(v=vs.110).aspx */
+    static if (s.length == 38 && (s[0] == '{' && s[$ - 1] == '}') || (s[0] == '(' && s[$ - 1] == ')'))
+    {
+        enum Guid = Guid!(s[1 .. $ - 1]);
+    }
+    else static if (s.length == 36)
+    {
+        enum Guid = mixin("GUID(0x" ~ s[0 .. 8] ~ ",0x" ~ s[9 .. 13] ~ ",0x"
+                    ~ s[14 .. 18] ~ ",[0x" ~ s[19 .. 21] ~ ",0x" ~ s[21 .. 23]
+                    ~ ",0x" ~ s[24 .. 26] ~ ",0x" ~ s[26 .. 28] ~ ",0x"
+                    ~ s[28 .. 30] ~ ",0x" ~ s[30 .. 32] ~ ",0x" ~ s[32 .. 34]
+                    ~ ",0x" ~ s[34 .. 36] ~ "])");
+    }
+    else
+        static assert(false, "Guid is not in the correct format");
 }
 
-template getGuidAttribute(T) {
-	static ComGuid helper() {
-		foreach(attr; __traits(getAttributes, T))
-			static if(is(typeof(attr) == ComGuid))
-				return attr;
-		assert(0);
-	}
-	__gshared static immutable getGuidAttribute = helper();
+bool hasGuidAttribute(T)()
+{
+    foreach (attr; __traits(getAttributes, T))
+        static if (is(typeof(attr) == Com))
+            return true;
+    return false;
 }
 
+template getGuidAttribute(T)
+{
+    static GUID helper()
+    {
+        foreach (attr; __traits(getAttributes, T))
+            static if (is(typeof(attr) == Com))
+                return attr.guid;
+        assert(0);
+    }
+
+    __gshared static immutable getGuidAttribute = helper();
+}
 
 /* COM CLIENT CODE */
 
@@ -75,6 +96,40 @@ struct AutoComPtr(T) {
 	~this() {
 		t.Release();
 	}
+template opDispatch(string member)
+{
+    auto opDispatch(A...)(A args)
+    {
+        IDispatch disp;
+        auto iid_dispatch = IID_IDispatch;
+        auto hr = t.QueryInterface(&iid_dispatch, cast(void**)&disp);
+        if (FAILED(hr))
+            throw new Exception("Failed to get dispatch");
+
+        int dispId;
+        auto iid_null = GUID_NULL;
+        import std.utf : toUTF16z;
+
+        auto szMember = member.toUTF16z;
+        hr = disp.GetIDsOfNames(&iid_null, cast(wchar**)&szMember, 1,
+                LOCALE_USER_DEFAULT, &dispId);
+        if (FAILED(hr))
+            throw new Exception("Failed to get method id");
+
+        wchar* str = cast(wchar*) "<xml></xml>".toUTF16z; // TODO build arguments
+        DISPPARAMS params;
+        VARIANTARG arg1;
+        arg1.vt = VARENUM.VT_BSTR;
+        arg1.bstrVal = str;
+        params.rgvarg = &arg1;
+        params.cArgs = 1;
+        hr = disp.Invoke(dispId, &iid_null, LOCALE_SYSTEM_DEFAULT,
+                DISPATCH_METHOD, &params, null, null, null);
+        if (FAILED(hr))
+            throw new Exception("Failed to invoke method");
+        //... TODO
+    }
+}
 	alias t this;
 }
 
@@ -470,7 +525,8 @@ char[] oleCharsToString(char[] buffer, OLECHAR* chars) {
 
 // usage: mixin ComServerMain!(CHello, CLSID_Hello, "Hello", "1.0");
 mixin template ComServerMain(Class, string progId, string ver) {
-	static assert(hasGuidAttribute!Class, "Add a @ComGuid(GUID()) to your class");
+	static assert(hasGuidAttribute!Class,
+            "Add a @Com(Guid!\"dddddddd-dddd-dddd-dddd-dddddddddddd\") to your class");
 
 	__gshared HINSTANCE g_hInst;
 
@@ -814,4 +870,17 @@ struct TmpStr {
 		buffer[length .. length + s.length] = s[];
 		length += s.length;
 	}
+}
+
+@Com(Guid!"2933BF95-7B36-11D2-B20E-00C04F983E60")
+interface DOMDocument : IUnknown
+{
+}
+
+void main()
+{
+    enum CLSID_DOMDocument60Class = Guid!"88D96A05-F192-11D4-A65F-0040963251E5";
+    auto a = createObject!DOMDocument(CLSID_DOMDocument60Class);
+
+    a.LoadXML("<xml></xml>");
 }
